@@ -1,0 +1,17 @@
+# Real dataset (2.4 GB, far above GitHub's 100 MB per-file limit): never commit it
+data/
+dataset/
+*.ulg
+*.bag
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

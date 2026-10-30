@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GPS Spoofing Detector</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#fff; --ink:#1c2230; --muted:#667085; --line:#e4e7ec;
+    --accent:#2f3e9e; --ok:#127a43; --okbg:#e3f5ea; --bad:#b42318; --badbg:#fde8e6; --warn:#9a5b00; --warnbg:#fff3d6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{background:#1c2230;color:#fff;padding:22px 28px}
+  header h1{margin:0;font-size:21px;font-weight:650;letter-spacing:.2px}
+  header p{margin:4px 0 0;color:#b8c0d4;font-size:13.5px}
+  main{max-width:1180px;margin:0 auto;padding:22px 20px 60px;display:grid;gap:20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px}
+  .card h2{margin:0 0 12px;font-size:16px}
+  .grid{display:grid;grid-template-columns:320px 1fr;gap:20px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.4px}
+  select,input[type=number],input[type=file]{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff}
+  input[type=range]{width:100%}
+  .hint{font-size:12.5px;color:var(--muted);margin-top:3px}
+  button{margin-top:16px;width:100%;padding:11px;border:0;border-radius:9px;background:var(--accent);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+  button:hover{filter:brightness(1.1)} button:disabled{opacity:.55;cursor:wait}
+  button.ghost{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+  .verdict{display:inline-block;padding:6px 14px;border-radius:999px;font-weight:700;font-size:14px}
+  .v-ok{background:var(--okbg);color:var(--ok)} .v-bad{background:var(--badbg);color:var(--bad)} .v-warn{background:var(--warnbg);color:var(--warn)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+  .kpi{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .kpi b{display:block;font-size:20px} .kpi span{font-size:12px;color:var(--muted)}
+  img.plot{width:100%;border:1px solid var(--line);border-radius:10px}
+  table{border-collapse:collapse;width:100%;font-size:13.5px}
+  th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+  th:first-child,td:first-child{text-align:left} th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+  tr.best td{background:#f2f4ff;font-weight:600}
+  .scroll{overflow-x:auto}
+  .note{font-size:13px;color:var(--muted)}
+  .empty{color:var(--muted);padding:60px 0;text-align:center}
+  code{background:#f0f2f6;padding:1px 5px;border-radius:5px;font-size:12.5px}
+  .err{color:var(--bad);font-weight:600;margin-top:10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Sensor-Spoofing Detection for Drones</h1>
+  <p>An LSTM/GRU learns what normal flight looks like from IMU, magnetometer and barometer, then flags GPS that disagrees. ANN Lab project &middot; simulated flights</p>
+</header>
+
+<main>
+  <div class="grid">
+    <section class="card">
+      <h2>Run a detection</h2>
+      <label>Detector</label>
+      <select id="model"></select>
+
+      <label>Flight</label>
+      <select id="flight"></select>
+      <div class="hint">Held-out test flights were never used for training or calibration.</div>
+
+      <label>Attack on the GPS</label>
+      <select id="attack"></select>
+
+      <div id="attackOpts">
+        <label>Attack starts at <span id="onsetVal">90</span> s</label>
+        <input type="range" id="onset" min="60" max="120" value="90">
+        <div id="rateBox">
+          <label>Drift rate <span id="rateVal">0.03</span> m per GPS update</label>
+          <input type="range" id="rate" min="0.01" max="0.10" step="0.005" value="0.03">
+          <div class="hint">Smaller than the GPS noise on any single reading (about 0.07 m).</div>
+        </div>
+      </div>
+      <button id="run">Run detection</button>
+      <div class="err" id="err"></div>
+    </section>
+
+    <section class="card" id="resultCard">
+      <h2>Result</h2>
+      <div class="empty" id="empty">Pick a flight and an attack, then press <b>Run detection</b>.</div>
+      <div id="result" hidden>
+        <span class="verdict" id="verdict"></span>
+        <div class="kpis" id="kpis"></div>
+        <img class="plot" id="plot" alt="Flight path and detector score">
+        <p class="note" id="explain"></p>
+      </div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Test-set results (all models, same held-out flights)</h2>
+    <p class="note" id="metaNote"></p>
+    <h3 style="font-size:14px;margin:14px 0 6px">Stealthy drift, the attack in the dataset</h3>
+    <div class="scroll"><table id="tDrift"></table></div>
+    <h3 style="font-size:14px;margin:18px 0 6px">Attacks the models never saw (detection rate &middot; mean delay)</h3>
+    <div class="scroll"><table id="tUnseen"></table></div>
+    <h3 style="font-size:14px;margin:18px 0 6px">Per flight plan (drift attack): F1-score</h3>
+    <div class="scroll"><table id="tPlan"></table></div>
+  </section>
+
+  <section class="card">
+    <h2>Try your own flight log (CSV)</h2>
+    <p class="note">Columns required: <code id="cols"></code> at 10 Hz. An optional <code>attack_label</code> column (0/1) marks the true attack start.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;align-items:end" id="upRow">
+      <div><label>CSV file</label><input type="file" id="csv" accept=".csv"></div>
+      <div><label>Detector</label><select id="model2"></select></div>
+      <div><button id="upload" style="margin-top:0">Analyse file</button></div>
+    </div>
+    <p class="note">No file handy? <a id="sample" href="#">Download a sample flight with a drift attack</a>.</p>
+    <div class="err" id="err2"></div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let META = null;
+
+function fillSelect(sel, obj){ sel.innerHTML = Object.entries(obj).map(([k,v])=>`<option value="${k}">${v}</option>`).join(''); }
+const pct = x => x==null ? '–' : Math.round(x*100)+'%';
+const num = (x,d=1) => x==null ? '–' : (+x).toFixed(d);
+
+async function init(){
+  META = await (await fetch('/api/meta')).json();
+  fillSelect($('model'), META.models); fillSelect($('model2'), META.models);
+  fillSelect($('attack'), META.attacks);
+  $('attack').value = 'drift';
+  $('flight').innerHTML = META.test_flights.map((f,i)=>`<option value="${i}">Test flight ${i+1} &middot; ${f.plan} plan (id ${f.seed})</option>`).join('');
+  $('cols').textContent = META.csv_columns.join(', ');
+  updateAttackUi();
+  const R = await (await fetch('/api/results')).json();
+  renderResults(R);
+}
+
+function updateAttackUi(){
+  const a = $('attack').value;
+  $('attackOpts').style.display = a==='none' ? 'none' : '';
+  $('rateBox').style.display = a==='drift' ? '' : 'none';
+}
+$('attack').onchange = updateAttackUi;
+$('onset').oninput = e => $('onsetVal').textContent = e.target.value;
+$('rate').oninput = e => $('rateVal').textContent = (+e.target.value).toFixed(3);
+
+function showResult(d){
+  const s = d.summary;
+  $('empty').hidden = true; $('result').hidden = false;
+  const v = $('verdict'); v.textContent = s.verdict;
+  const good = s.verdict.startsWith('No spoof') || s.verdict.startsWith('SPOOFING DET');
+  v.className = 'verdict ' + (s.verdict.startsWith('MISSED')||s.verdict.includes('false') ? 'v-bad' : (good ? 'v-ok' : 'v-warn'));
+  const k = [];
+  k.push(['Detector', s.model]);
+  if (s.attack_onset_s!=null) k.push(['Attack started', s.attack_onset_s+' s']);
+  k.push(['First alarm', s.first_alarm_s!=null ? s.first_alarm_s+' s' : 'none']);
+  if (s.detection_delay_s!=null) k.push(['Detection delay', s.detection_delay_s+' s']);
+  if (s.false_alarms_before_onset!=null) k.push(['False alarms before attack', s.false_alarms_before_onset]);
+  if (s.position_error_at_first_alarm_m!=null) k.push(['GPS error when caught', s.position_error_at_first_alarm_m+' m']);
+  if (s.position_error_at_end_m!=null) k.push(['GPS error at end of flight', s.position_error_at_end_m+' m']);
+  $('kpis').innerHTML = k.map(([a,b])=>`<div class="kpi"><b style="font-size:${String(b).length>14?'14px':'20px'}">${b}</b><span>${a}</span></div>`).join('');
+  $('plot').src = 'data:image/png;base64,' + d.image;
+  $('explain').textContent = 'Left: the path the drone really flew (blue) against what the spoofed GPS reports (red). Right: the detector score over time; an alarm is raised when it crosses the dashed threshold.';
+}
+
+async function post(url, opts, errBox, btn){
+  errBox.textContent=''; btn.disabled=true; const t=btn.textContent; btn.textContent='Running…';
+  try{
+    const r = await fetch(url, opts); const d = await r.json();
+    if(!r.ok){ errBox.textContent = d.error || 'Request failed'; return; }
+    showResult(d); $('resultCard').scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(e){ errBox.textContent = 'Could not reach the server.'; }
+  finally{ btn.disabled=false; btn.textContent=t; }
+}
+
+$('run').onclick = () => {
+  const f = META.test_flights[+$('flight').value];
+  const body = {model:$('model').value, plan:f.plan, seed:f.seed, attack:$('attack').value,
+                onset_s:+$('onset').value, rate: $('attack').value==='drift' ? +$('rate').value : null};
+  post('/api/detect', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}, $('err'), $('run'));
+};
+$('upload').onclick = () => {
+  if(!$('csv').files.length){ $('err2').textContent='Choose a CSV file first.'; return; }
+  const fd = new FormData(); fd.append('file', $('csv').files[0]); fd.append('model', $('model2').value);
+  post('/api/detect_csv', {method:'POST', body:fd}, $('err2'), $('upload'));
+};
+$('sample').onclick = e => { e.preventDefault(); location.href = '/api/sample_csv?plan=curved&seed=5&attack=drift'; };
+
+function table(el, head, rows, bestIdx){
+  el.innerHTML = '<thead><tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr></thead><tbody>'+
+    rows.map((r,i)=>`<tr class="${i===bestIdx?'best':''}">`+r.map(c=>`<td>${c}</td>`).join('')+'</tr>').join('')+'</tbody>';
+}
+
+function renderResults(R){
+  const names = META.models, order = Object.keys(R.overall);
+  const m = R.meta;
+  $('metaNote').textContent = `${m.n_flights.test} held-out test flights (train ${m.n_flights.train}, validation ${m.n_flights.val}); data: ${m.data}. Attacks: ${m.attack_params}. Few flights means small samples: read false-alarm rates as rough.`;
+  table($('tDrift'), ['Model','Precision','Recall','F1','PR-AUC','Detected','Mean delay (s)','False alarms / h','ms / step'],
+    order.map(k=>{const d=R.overall[k].drift; return [names[k], num(d.precision,2), num(d.recall,2), num(d.f1,2), num(d.pr_auc,2), pct(d.detection_rate), num(d.mean_delay_s), num(d.false_alarms_per_hour), num(R.latency_ms[k],2)];}),
+    0);
+  const atk = ['step','ramp','freeze'], lab = {step:'Step offset', ramp:'Fast ramp', freeze:'Freeze'};
+  table($('tUnseen'), ['Model', ...atk.map(a=>lab[a])],
+    order.map(k=>[names[k], ...atk.map(a=>{const d=R.overall[k][a]; return pct(d.detection_rate)+' · '+(d.mean_delay_s==null?'–':d.mean_delay_s+' s');})]), 0);
+  const plans = Object.keys(R.per_plan[order[0]]);
+  table($('tPlan'), ['Model', ...plans], order.map(k=>[names[k], ...plans.map(p=>num(R.per_plan[k][p].f1,2))]), 0);
+}
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+12:36:27 flights  train/val/test: {'train': 36, 'val': 12, 'test': 12}
+12:36:28 training windows (attack-free): (64080, 20, 14)  validation: (21360, 20, 14)
+12:36:28 training LSTM predictor
+12:36:31   LSTM epoch  1  train 0.6369  val 0.5996
+12:36:33   LSTM epoch  2  train 0.6008  val 0.5991
+12:36:35   LSTM epoch  3  train 0.6003  val 0.5989
+12:36:37   LSTM epoch  4  train 0.6001  val 0.5992
+12:36:39   LSTM epoch  5  train 0.5999  val 0.5997
+12:36:41   LSTM epoch  6  train 0.5997  val 0.5994
+12:36:43   LSTM epoch  7  train 0.5997  val 0.5989
+12:36:45   LSTM epoch  8  train 0.5996  val 0.5982
+12:36:47   LSTM epoch  9  train 0.5994  val 0.5998
+12:36:49   LSTM epoch 10  train 0.5993  val 0.5990
+12:36:51   LSTM epoch 11  train 0.5993  val 0.5987
+12:36:53   LSTM epoch 12  train 0.5992  val 0.5996
+12:36:53   LSTM: early stop (best val 0.5982)
+12:36:53 training GRU predictor
+12:36:57   GRU epoch  1  train 0.6316  val 0.5991
+12:37:00   GRU epoch  2  train 0.6008  val 0.6031
+12:37:03   GRU epoch  3  train 0.5999  val 0.6010
+12:37:07   GRU epoch  4  train 0.5998  val 0.5990
+12:37:10   GRU epoch  5  train 0.5991  val 0.5983
+12:37:13   GRU epoch  6  train 0.5992  val 0.5988
+12:37:17   GRU epoch  7  train 0.5989  val 0.5977
+12:37:20   GRU epoch  8  train 0.5982  val 0.6011
+12:37:23   GRU epoch  9  train 0.5987  val 0.5991
+12:37:27   GRU epoch 10  train 0.5984  val 0.5993
+12:37:30   GRU epoch 11  train 0.5983  val 0.5992
+12:37:30   GRU: early stop (best val 0.5977)
+12:37:31 training dense autoencoder
+12:37:31   AE epoch  1  train 0.4780  val 0.3106
+12:37:31   AE epoch  2  train 0.2966  val 0.2624
+12:37:31   AE epoch  3  train 0.2753  val 0.2578
+12:37:32   AE epoch  4  train 0.2709  val 0.2545
+12:37:32   AE epoch  5  train 0.2692  val 0.2536
+12:37:32   AE epoch  6  train 0.2682  val 0.2533
+12:37:32   AE epoch  7  train 0.2675  val 0.2539
+12:37:33   AE epoch  8  train 0.2677  val 0.2530
+12:37:33   AE epoch  9  train 0.2673  val 0.2540
+12:37:33   AE epoch 10  train 0.2670  val 0.2529
+12:37:33   AE epoch 11  train 0.2670  val 0.2538
+12:37:34   AE epoch 12  train 0.2672  val 0.2531
+12:37:34   AE epoch 13  train 0.2666  val 0.2527
+12:37:34   AE epoch 14  train 0.2663  val 0.2524
+12:37:35   AE epoch 15  train 0.2656  val 0.2504
+12:37:35   AE epoch 16  train 0.2643  val 0.2507
+12:37:35   AE epoch 17  train 0.2638  val 0.2495
+12:37:35   AE epoch 18  train 0.2626  val 0.2497
+12:37:36   AE epoch 19  train 0.2620  val 0.2491
+12:37:36   AE epoch 20  train 0.2616  val 0.2479
+12:37:36 fitting Isolation Forest
+12:37:37 training supervised LSTM classifier
+12:37:39   CLF epoch  1  train 0.3326  val 0.0887
+12:37:42   CLF epoch  2  train 0.0678  val 0.0654
+12:37:44   CLF epoch  3  train 0.0528  val 0.0500
+12:37:47   CLF epoch  4  train 0.0432  val 0.0399
+12:37:49   CLF epoch  5  train 0.0246  val 0.0144
+12:37:51   CLF epoch  6  train 0.0103  val 0.0242
+12:37:54   CLF epoch  7  train 0.0102  val 0.0198
+12:37:56   CLF epoch  8  train 0.0093  val 0.0158
+12:37:58   CLF epoch  9  train 0.0083  val 0.0173
+12:37:58   CLF: early stop (best val 0.0144)
+12:37:59 lstm: residual sigma [0.0715 0.0707]  k=0.25  h=5.28
+12:37:59 gru: residual sigma [0.0712 0.0708]  k=0.25  h=7.31
+12:38:00 evaluating on held-out test flights
+12:38:02   lstm     drift: F1 0.984  detected 1.0  delay 2.4s  FA/h 2.2   (2s)
+12:38:05   gru      drift: F1 0.977  detected 1.0  delay 3.4s  FA/h 2.2   (3s)
+12:38:08   iforest  drift: F1 0.025  detected 0.333  delay 33.6s  FA/h 52.6   (3s)
+12:38:08   ae       drift: F1 0.026  detected 0.333  delay 16.8s  FA/h 181.2   (0s)
+12:38:09   clf      drift: F1 0.996  detected 1.0  delay 0.7s  FA/h 11.2   (1s)
+12:38:09 done in 1.7 min -> artifacts/results.json
